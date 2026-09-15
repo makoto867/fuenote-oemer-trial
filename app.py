@@ -4,6 +4,7 @@ import asyncio
 import io
 import os
 import shutil
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -115,7 +116,8 @@ def _normalize_image(data: bytes, output_path: Path) -> None:
 
 
 async def _run_oemer(image_path: Path, output_path: Path, without_deskew: bool) -> tuple[bytes, bytes | None]:
-    command = ["oemer", str(image_path), "-o", str(output_path)]
+    runner_path = Path(__file__).with_name("run_oemer.py")
+    command = [sys.executable, str(runner_path), str(image_path), "-o", str(output_path)]
     if without_deskew:
         command.append("-d")
 
@@ -126,7 +128,7 @@ async def _run_oemer(image_path: Path, output_path: Path, without_deskew: bool) 
             stderr=asyncio.subprocess.STDOUT,
         )
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=503, detail="oemerがサーバーにインストールされていません。") from exc
+        raise HTTPException(status_code=503, detail="oemer実行環境を開始できませんでした。") from exc
 
     try:
         output, _ = await asyncio.wait_for(process.communicate(), timeout=OEMER_TIMEOUT_SECONDS)
