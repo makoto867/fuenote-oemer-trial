@@ -62,8 +62,11 @@ def inference(
     options = rt.SessionOptions()
     options.intra_op_num_threads = 1
     options.inter_op_num_threads = 1
+    options.execution_mode = rt.ExecutionMode.ORT_SEQUENTIAL
+    options.graph_optimization_level = rt.GraphOptimizationLevel.ORT_ENABLE_BASIC
     options.enable_cpu_mem_arena = False
     options.enable_mem_pattern = False
+    options.add_session_config_entry("session.disable_prepacking", "1")
     session = rt.InferenceSession(
         str(model_dir / "model.onnx"),
         sess_options=options,
