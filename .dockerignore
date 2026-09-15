@@ -1,0 +1,12 @@
+.git
+.github
+__pycache__
+.pytest_cache
+.venv
+tests
+*.pyc
+*.pyo
+*.musicxml
+*.png
+*.jpg
+*.jpeg
