@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(15 * 1024 * 1024)))
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "24000000"))
 OEMER_TIMEOUT_SECONDS = int(os.getenv("OEMER_TIMEOUT_SECONDS", "1200"))
@@ -159,7 +159,7 @@ async def health() -> dict:
 async def recognize(
     file: UploadFile = File(..., description="楽譜画像（JPEG/PNGなど）"),
     response_format: str = Query("json", pattern="^(json|musicxml)$"),
-    without_deskew: bool = Query(False, description="水平なスキャン画像のみtrueを推奨"),
+    without_deskew: bool = Query(True, description="低メモリ試験サーバーではtrueを推奨"),
 ) -> Response | dict:
     data = await _read_limited(file)
 
@@ -192,4 +192,4 @@ async def index() -> str:
 <style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:760px;margin:36px auto;padding:0 18px;color:#172033}button{padding:10px 18px}pre{white-space:pre-wrap;background:#f3f5f8;padding:14px;border-radius:10px;max-height:55vh;overflow:auto}.note{color:#5d6675}</style></head>
 <body><h1>FueNote oemer試験サーバー</h1><p class="note">楽譜画像を選ぶと、oemerがMusicXMLとドレミ列を返します。初回はモデル取得のため時間がかかります。</p>
 <form id="form"><input id="file" type="file" accept="image/*" required> <button>解析する</button></form><p id="state"></p><pre id="result"></pre>
-<script>form.onsubmit=async(e)=>{e.preventDefault();state.textContent='解析中です。画面を閉じずにお待ちください…';result.textContent='';const fd=new FormData();fd.append('file',file.files[0]);try{const r=await fetch('/v1/recognize',{method:'POST',body:fd});const j=await r.json();if(!r.ok)throw new Error(JSON.stringify(j));state.textContent=`完了：${j.note_count}音`;result.textContent=j.notes.filter(x=>!x.rest).map(x=>x.solfege).join(' ')}catch(err){state.textContent='失敗しました';result.textContent=String(err)}}</script></body></html>"""
+<script>form.onsubmit=async(e)=>{e.preventDefault();state.textContent='解析中です。画面を閉じずにお待ちください…';result.textContent='';const fd=new FormData();fd.append('file',file.files[0]);try{const r=await fetch('/v1/recognize?without_deskew=true',{method:'POST',body:fd});const text=await r.text();let j;try{j=JSON.parse(text)}catch{throw new Error(`サーバーから正常な応答がありません（HTTP ${r.status}）。再読み込みしてもう一度お試しください。`)}if(!r.ok)throw new Error(j.detail?.message||j.detail||JSON.stringify(j));state.textContent=`完了：${j.note_count}音`;result.textContent=j.notes.filter(x=>!x.rest).map(x=>x.solfege).join(' ')}catch(err){state.textContent='失敗しました';result.textContent=err instanceof TypeError?'解析サーバーとの接続が切れました。ページを再読み込みして、もう一度お試しください。':String(err.message||err)}}</script></body></html>"""
