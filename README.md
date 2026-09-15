@@ -20,9 +20,23 @@ docker run --rm -p 10000:10000 fuenote-oemer-trial
 
 ## Render
 
-- Runtime: Docker
+- Runtime: Python 3.10（自動作成時）
 - Health check path: `/health`
 - Plan: Free（メモリ不足時はStarter以上へ変更）
 - Region: Singapore
+
+Build command:
+
+```bash
+pip install -r requirements.txt && pip install --no-deps oemer==0.1.8
+```
+
+Start command:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1
+```
+
+`Dockerfile`は、後でDocker方式へ切り替えて比較するときのために残しています。
 
 データベースやAPIキーは不要です。
