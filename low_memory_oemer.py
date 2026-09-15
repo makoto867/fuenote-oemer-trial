@@ -8,20 +8,19 @@ small batch immediately.
 
 from __future__ import annotations
 
+import argparse
 import os
 import pickle
-import sys
 from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
-import onnxruntime as rt
 from PIL import Image
 
 
 def _resize_image(image: Image.Image) -> Image.Image:
-    target_pixels = int(os.getenv("OEMER_TARGET_PIXELS", "1600000"))
+    target_pixels = int(os.getenv("OEMER_TARGET_PIXELS", "1000000"))
     width, height = image.size
     pixels = max(width * height, 1)
     ratio = (target_pixels / pixels) ** 0.5
@@ -50,6 +49,11 @@ def inference(
 ):
     if use_tf:
         raise RuntimeError("The low-memory server supports ONNX inference only.")
+
+    # Import this only inside the short-lived worker process. Keeping the ONNX
+    # runtime and both models in the API/oemer parent processes exceeds the
+    # 512 MB Render free-instance limit even when patches are streamed.
+    import onnxruntime as rt
 
     model_dir = Path(model_path)
     with (model_dir / "metadata.pkl").open("rb") as file:
@@ -109,3 +113,24 @@ def inference(
     # oemer only uses the class map in its end-to-end command. Returning an
     # empty probability tensor prevents another full-image array being retained.
     return class_map, np.empty((0,), dtype=np.float32)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run one oemer ONNX model with bounded memory.")
+    parser.add_argument("--model-dir", required=True)
+    parser.add_argument("--image", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--step-size", type=int, default=192)
+    args = parser.parse_args()
+
+    class_map, _ = inference(
+        args.model_dir,
+        args.image,
+        step_size=args.step_size,
+        batch_size=1,
+    )
+    np.save(args.output, class_map, allow_pickle=False)
+
+
+if __name__ == "__main__":
+    main()
